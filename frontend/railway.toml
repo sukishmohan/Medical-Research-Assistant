@@ -3,7 +3,7 @@
   buildCommand = "npm run build"
 
 [deploy]
-  startCommand = "npm run preview"
+  startCommand = "npx serve -s dist -l 3000"
   healthcheckPath = "/"
   restartPolicyType = "always"
   restartPolicyMaxRetries = 5
