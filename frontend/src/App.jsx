@@ -1,217 +1,129 @@
-/**
- * Medical Research Assistant - Main App Component
- * 
- * Features:
- * - Query input interface
- * - Real-time response streaming
- * - Source cards with citations
- * - Trust score visualization
- * - Conversation history
- */
-
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, TrendingUp, FileText, Beaker, AlertCircle } from 'lucide-react';
-import SearchInterface from './components/SearchInterface';
-import ResponseDisplay from './components/ResponseDisplay';
-import ConversationHistory from './components/ConversationHistory';
-import useConversation from './hooks/useConversation';
+import React, { useState } from 'react'
+import { Search, Loader } from 'lucide-react'
 
 export default function App() {
-  const [query, setQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState(null);
-  const responseRef = useRef(null);
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const {
-    conversationId,
-    messages,
-    addMessage,
-    loadConversation,
-    createNewConversation
-  } = useConversation();
+  const handleSearch = async (e) => {
+    e.preventDefault()
+    if (!query.trim()) return
 
-  // Handle search submission
-  const handleSearch = async (searchQuery) => {
-    if (!searchQuery.trim()) return;
-
-    setQuery(searchQuery);
-    setIsLoading(true);
-    setResponse(null);
+    setLoading(true)
+    setError('')
+    setResults(null)
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/search`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+      const response = await fetch(`${apiUrl}/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: searchQuery,
-          userId: getUserId(),
-          conversationId
+          query: query,
+          userId: localStorage.getItem('userId') || `user_${Date.now()}`
         })
-      });
+      })
 
-      const data = await res.json();
-
-      if (data.success) {
-        setResponse(data.response);
-        addMessage({
-          role: 'user',
-          content: searchQuery,
-          timestamp: new Date()
-        });
-        addMessage({
-          role: 'assistant',
-          content: data.response,
-          timestamp: new Date()
-        });
-
-        // Scroll to response
-        setTimeout(() => {
-          responseRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-      }
-
-    } catch (error) {
-      console.error('Search error:', error);
-      setResponse({
-        error: 'Failed to fetch research. Please try again.'
-      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const data = await response.json()
+      setResults(data)
+    } catch (err) {
+      setError(err.message || 'Search failed. Make sure backend is running.')
     } finally {
-      setIsLoading(false);
+      setLoading(false)
     }
-  };
-
-  // Get or create user ID
-  const getUserId = () => {
-    let userId = localStorage.getItem('userId');
-    if (!userId) {
-      userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('userId', userId);
-    }
-    return userId;
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Navigation */}
-      <nav className="border-b border-slate-700 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Beaker className="w-8 h-8 text-blue-400" />
-            <h1 className="text-2xl font-bold text-white">Medical Research Assistant</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 p-8">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-white mb-4">Medical Research Assistant</h1>
+          <p className="text-blue-100 text-lg">Search across 240M+ academic papers powered by Groq</p>
+        </div>
+
+        {/* Search Form */}
+        <form onSubmit={handleSearch} className="mb-8">
+          <div className="bg-white rounded-lg shadow-xl overflow-hidden">
+            <div className="flex items-center p-4">
+              <Search className="w-6 h-6 text-gray-400 mr-4" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Enter a medical research query..."
+                className="flex-1 outline-none text-lg"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading ? 'Searching...' : 'Search'}
+              </button>
+            </div>
           </div>
-          <button
-            onClick={createNewConversation}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-          >
-            New Research
-          </button>
-        </div>
-      </nav>
+        </form>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Sidebar - Conversation History */}
-        <div className="lg:col-span-1 h-fit sticky top-20">
-          <ConversationHistory
-            onSelectConversation={loadConversation}
-            currentConversationId={conversationId}
-          />
-        </div>
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-8 rounded">
+            <p className="font-semibold">Error</p>
+            <p>{error}</p>
+          </div>
+        )}
 
-        {/* Main Content */}
-        <div className="lg:col-span-3 space-y-6">
-          {/* Search Interface */}
-          <SearchInterface
-            onSearch={handleSearch}
-            isLoading={isLoading}
-            query={query}
-          />
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <Loader className="w-8 h-8 text-white animate-spin" />
+          </div>
+        )}
 
-          {/* Loading State */}
-          {isLoading && (
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 text-center">
-              <div className="inline-block">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+        {/* Results */}
+        {results && (
+          <div className="space-y-6">
+            {results.success ? (
+              <>
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-4">Response</h2>
+                  <div className="text-gray-700 leading-relaxed">
+                    {typeof results.response === 'string' 
+                      ? results.response 
+                      : JSON.stringify(results.response, null, 2)}
+                  </div>
+                </div>
+
+                {results.sources && results.sources.length > 0 && (
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">Sources</h3>
+                    <div className="space-y-3">
+                      {results.sources.map((source, idx) => (
+                        <div key={idx} className="border-l-4 border-blue-500 pl-4 py-2">
+                          <p className="font-semibold text-gray-800">{source.title || `Source ${idx + 1}`}</p>
+                          <p className="text-gray-600 text-sm">{source.url || source.source}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <p className="text-gray-700">{results.message || 'No results found'}</p>
               </div>
-              <p className="mt-4 text-slate-400">
-                Searching research across 3 sources + synthesizing with AI...
-              </p>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {/* Error State */}
-          {response?.error && (
-            <div className="bg-red-900/20 border border-red-700 rounded-lg p-4 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-red-400 font-semibold">Error</p>
-                <p className="text-red-300 text-sm">{response.error}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Response Display */}
-          {response && !response.error && (
-            <div ref={responseRef}>
-              <ResponseDisplay response={response} />
-            </div>
-          )}
-
-          {/* Empty State */}
-          {!response && !isLoading && (
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-12 text-center">
-              <Search className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-slate-300 mb-2">
-                Start your medical research
-              </h2>
-              <p className="text-slate-400 max-w-md mx-auto">
-                Ask questions about treatments, clinical trials, diagnosis criteria, 
-                epidemiology, and more. We'll search across PubMed, OpenAlex, and 
-                ClinicalTrials.gov to find the latest evidence.
-              </p>
-
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button
-                  onClick={() => handleSearch('What are the latest treatments for stage 3 NSCLC?')}
-                  className="p-4 bg-slate-700 hover:bg-slate-600 rounded-lg text-left transition"
-                >
-                  <FileText className="w-5 h-5 text-blue-400 mb-2" />
-                  <p className="text-sm font-semibold text-white">Cancer Treatment</p>
-                  <p className="text-xs text-slate-400 mt-1">NSCLC immunotherapy</p>
-                </button>
-
-                <button
-                  onClick={() => handleSearch('What biomarkers predict immunotherapy response?')}
-                  className="p-4 bg-slate-700 hover:bg-slate-600 rounded-lg text-left transition"
-                >
-                  <TrendingUp className="w-5 h-5 text-green-400 mb-2" />
-                  <p className="text-sm font-semibold text-white">Biomarkers</p>
-                  <p className="text-xs text-slate-400 mt-1">Predictive markers</p>
-                </button>
-
-                <button
-                  onClick={() => handleSearch('Risk factors for type 2 diabetes in adolescents')}
-                  className="p-4 bg-slate-700 hover:bg-slate-600 rounded-lg text-left transition"
-                >
-                  <Beaker className="w-5 h-5 text-purple-400 mb-2" />
-                  <p className="text-sm font-semibold text-white">Epidemiology</p>
-                  <p className="text-xs text-slate-400 mt-1">Risk factors study</p>
-                </button>
-              </div>
-            </div>
-          )}
+        {/* Info */}
+        <div className="mt-12 text-center text-blue-100">
+          <p>Backend URL: {import.meta.env.VITE_API_URL || 'http://localhost:8080'}</p>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="mt-16 border-t border-slate-700 bg-slate-900/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 py-8 text-center text-slate-400 text-sm">
-          <p>
-            This tool synthesizes research from PubMed, OpenAlex, and ClinicalTrials.gov.
-            <br />
-            <span className="text-red-400">⚠️ Not medical advice. Always consult healthcare providers.</span>
-          </p>
-        </div>
-      </footer>
     </div>
-  );
+  )
 }
