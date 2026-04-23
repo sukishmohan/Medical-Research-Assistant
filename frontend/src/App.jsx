@@ -16,7 +16,7 @@ export default function App() {
     setResults(null)
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+      const apiUrl = 'https://medical-research-assistant-production-4f66.up.railway.app'
       const response = await fetch(`${apiUrl}/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -121,7 +121,7 @@ export default function App() {
 
         {/* Info */}
         <div className="mt-12 text-center text-blue-100">
-          <p>Backend URL: {import.meta.env.VITE_API_URL || 'http://localhost:8080'}</p>
+          <p>Backend URL: https://medical-research-assistant-production-4f66.up.railway.app</p>
         </div>
       </div>
     </div>
