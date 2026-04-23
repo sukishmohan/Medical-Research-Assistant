@@ -17,20 +17,34 @@ export default function App() {
 
     try {
       const apiUrl = 'https://medical-research-assistant-production-4f66.up.railway.app'
+      console.log('🔍 Fetching from:', `${apiUrl}/api/search`)
+      
       const response = await fetch(`${apiUrl}/api/search`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           query: query,
           userId: localStorage.getItem('userId') || `user_${Date.now()}`
         })
       })
 
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      console.log('📨 Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+      
       const data = await response.json()
+      console.log('✅ Got data:', data)
       setResults(data)
     } catch (err) {
-      setError(err.message || 'Search failed. Make sure backend is running.')
+      console.error('❌ Error:', err)
+      setError(err.message || 'Search failed. Check console for details.')
     } finally {
       setLoading(false)
     }

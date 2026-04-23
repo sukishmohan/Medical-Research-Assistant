@@ -14,7 +14,20 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(compression());
 app.use(morgan('combined'));
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+
+// Explicit CORS for GitHub Pages
+app.use(cors({
+  origin: [
+    'https://sukishmohan.github.io',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    '*'
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Accept']
+}));
+
 app.use(express.json({ limit: '10mb' }));
 
 // Health check endpoint
